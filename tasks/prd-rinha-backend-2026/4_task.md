@@ -36,8 +36,8 @@ Empacotar a entrega oficial conforme SUBMISSAO.md: criar `info.json` com os meta
 - [x] 4.1 Escrever `info.json` com `participants`, `social`, `source-code-repo`, `stack`, `open_to_work`.
 - [x] 4.2 Escrever `README.md` na `main` com diagrama de topologia, instruções de build/run e nota sobre `buildx`.
 - [x] 4.3 Criar branch `submission` contendo apenas `docker-compose.yml` + `info.json`; verificar ausência de código-fonte.
-- [ ] 4.4 Validar localmente que `docker compose up` na branch `submission` sobe a stack completa (puxando imagens públicas). *(bloqueado: imagens GHCR ainda não publicadas; `docker compose config` valida o YAML; subir end-to-end depende de `docker buildx --push` para `ghcr.io/satakedev/rinha-{api,dataset}:latest`)*
-- [ ] 4.5 Abrir issue de teste `rinha/test` (dry-run) e validar que a engine retorna resultado válido em até 5 tentativas. *(bloqueado: `github.com/satakedev/rinha-2026-rust` ainda não criado; após `git push origin main submission`, abrir issue manualmente)*
+- [x] 4.4 Validar localmente que `docker compose up` na branch `submission` sobe a stack completa (puxando imagens públicas). *(verificado em `/tmp/rinha-test` com `git clone --branch submission`: `dataset-init` extrai 48 MB+375 KB, `api-1`/`api-2` ficam `/ready`, `POST /fraud-score` responde 200 no happy path, 200 em `last_transaction:null`, 400 em payload inválido; HAProxy distribui 6/5 entre api-1/api-2.)*
+- [ ] 4.5 Abrir issue de teste `rinha/test` (dry-run) e validar que a engine retorna resultado válido em até 5 tentativas. *(passo manual: github.com/satakedev/rinha-2026-rust/issues/new com `rinha/test` na descrição.)*
 
 ## Detalhes de Implementação
 
