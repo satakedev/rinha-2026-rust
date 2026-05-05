@@ -1,0 +1,14 @@
+target/
+**/target/
+.git/
+.gitignore
+.github/
+.idea/
+.vscode/
+.DS_Store
+*.md
+!README.md
+tasks/
+test/
+*.log
+node_modules/

@@ -1,0 +1,89 @@
+services:
+  # One-shot init: builds the `dataset` stage of the Dockerfile (which produces
+  # references.i8.bin + labels.bits) and copies the artifacts into the named
+  # volume that both API instances mount read-only. Exits with code 0 on
+  # success; api-* services wait for that via depends_on/service_completed_successfully.
+  dataset-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dataset
+    image: rinha-dataset:local
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        cp -f /dataset/references.i8.bin /dataset/labels.bits /shared/
+        ls -la /shared/
+    volumes:
+      - dataset-vol:/shared
+    networks:
+      - rinha
+    restart: "no"
+
+  api-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: rinha-api:local
+    depends_on:
+      dataset-init:
+        condition: service_completed_successfully
+    environment:
+      RINHA_BIND: 0.0.0.0:8080
+      RINHA_REFS: /var/lib/rinha/dataset/references.i8.bin
+      RINHA_LABELS: /var/lib/rinha/dataset/labels.bits
+    volumes:
+      - dataset-vol:/var/lib/rinha/dataset:ro
+    networks:
+      - rinha
+    deploy:
+      resources:
+        limits:
+          cpus: "0.45"
+          memory: 160M
+
+  api-2:
+    image: rinha-api:local
+    depends_on:
+      dataset-init:
+        condition: service_completed_successfully
+    environment:
+      RINHA_BIND: 0.0.0.0:8080
+      RINHA_REFS: /var/lib/rinha/dataset/references.i8.bin
+      RINHA_LABELS: /var/lib/rinha/dataset/labels.bits
+    volumes:
+      - dataset-vol:/var/lib/rinha/dataset:ro
+    networks:
+      - rinha
+    deploy:
+      resources:
+        limits:
+          cpus: "0.45"
+          memory: 160M
+
+  lb:
+    image: haproxytech/haproxy-alpine:2.9
+    depends_on:
+      - api-1
+      - api-2
+    ports:
+      - "9999:9999"
+    volumes:
+      - ./infra/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - rinha
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: 30M
+
+volumes:
+  dataset-vol:
+
+networks:
+  rinha:
+    driver: bridge

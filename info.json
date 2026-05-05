@@ -1,0 +1,7 @@
+{
+    "participants": ["Satake"],
+    "social": ["https://github.com/satakedev"],
+    "source-code-repo": "https://github.com/satakedev/rinha-2026-rust",
+    "stack": ["rust", "axum", "haproxy", "docker"],
+    "open_to_work": false
+}
