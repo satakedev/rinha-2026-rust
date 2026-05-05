@@ -1,0 +1,113 @@
+services:
+  # One-shot init: pulls the public dataset image (built from the Dockerfile's
+  # `dataset` stage on the maintainer's CI) and copies references.i8.bin +
+  # labels.bits into the named volume that both API instances mount read-only.
+  # Exits with code 0 on success; api-* services wait for that via depends_on/
+  # service_completed_successfully.
+  dataset-init:
+    image: ghcr.io/satakedev/rinha-dataset:latest
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        cp -f /dataset/references.i8.bin /dataset/labels.bits /shared/
+        ls -la /shared/
+    volumes:
+      - dataset-vol:/shared
+    networks:
+      - rinha
+    restart: "no"
+
+  api-1:
+    image: ghcr.io/satakedev/rinha-api:latest
+    depends_on:
+      dataset-init:
+        condition: service_completed_successfully
+    environment:
+      RINHA_BIND: 0.0.0.0:8080
+      RINHA_REFS: /var/lib/rinha/dataset/references.i8.bin
+      RINHA_LABELS: /var/lib/rinha/dataset/labels.bits
+    volumes:
+      - dataset-vol:/var/lib/rinha/dataset:ro
+    networks:
+      - rinha
+    deploy:
+      resources:
+        limits:
+          cpus: "0.45"
+          memory: 160M
+
+  api-2:
+    image: ghcr.io/satakedev/rinha-api:latest
+    depends_on:
+      dataset-init:
+        condition: service_completed_successfully
+    environment:
+      RINHA_BIND: 0.0.0.0:8080
+      RINHA_REFS: /var/lib/rinha/dataset/references.i8.bin
+      RINHA_LABELS: /var/lib/rinha/dataset/labels.bits
+    volumes:
+      - dataset-vol:/var/lib/rinha/dataset:ro
+    networks:
+      - rinha
+    deploy:
+      resources:
+        limits:
+          cpus: "0.45"
+          memory: 160M
+
+  lb:
+    image: haproxytech/haproxy-alpine:2.9
+    depends_on:
+      - api-1
+      - api-2
+    ports:
+      - "9999:9999"
+    configs:
+      - source: haproxy_cfg
+        target: /usr/local/etc/haproxy/haproxy.cfg
+    networks:
+      - rinha
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: 30M
+
+configs:
+  haproxy_cfg:
+    content: |
+      global
+          daemon
+          maxconn 4096
+          log stdout format raw local0
+
+      defaults
+          mode http
+          timeout connect 2s
+          timeout client  10s
+          timeout server  10s
+          option http-keep-alive
+          option forwardfor
+          option httplog
+          log global
+
+      frontend fe_rinha
+          bind *:9999
+          default_backend be_api
+
+      backend be_api
+          balance roundrobin
+          option httpchk
+          http-check send meth GET uri /ready
+          http-check expect status 200
+          server api-1 api-1:8080 check inter 1s fall 2 rise 1
+          server api-2 api-2:8080 check inter 1s fall 2 rise 1
+
+volumes:
+  dataset-vol:
+
+networks:
+  rinha:
+    driver: bridge
