@@ -27,6 +27,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # Needs glibc + a writable filesystem; debian:bookworm-slim is the smallest
 # base that pairs cleanly with the rust:bookworm builder.
 FROM --platform=linux/amd64 debian:bookworm-slim AS dataset
+LABEL org.opencontainers.image.source=https://github.com/satakedev/rinha-2026-rust \
+      org.opencontainers.image.description="Rinha de Backend 2026 — pre-built reference artifacts (references.i8.bin + labels.bits)" \
+      org.opencontainers.image.licenses=MIT
 WORKDIR /work
 COPY --from=builder /out/build-dataset /usr/local/bin/build-dataset
 COPY resources/references.json.gz ./resources/references.json.gz
@@ -38,6 +41,9 @@ RUN mkdir -p /dataset \
 # nothing else (no shell, no package manager). The dataset volume is mounted
 # at runtime by docker-compose; resources JSONs are baked into the image.
 FROM --platform=linux/amd64 gcr.io/distroless/cc-debian12 AS runtime
+LABEL org.opencontainers.image.source=https://github.com/satakedev/rinha-2026-rust \
+      org.opencontainers.image.description="Rinha de Backend 2026 — k-NN AVX2 fraud-detection API" \
+      org.opencontainers.image.licenses=MIT
 COPY --from=builder /out/api /usr/local/bin/api
 COPY resources/normalization.json /etc/rinha/normalization.json
 COPY resources/mcc_risk.json /etc/rinha/mcc_risk.json
